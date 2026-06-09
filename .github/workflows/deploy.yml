@@ -1,0 +1,47 @@
+name: Deploy Pages (decrypt dist)
+
+# 생성물(site)을 통째로 gpg 암호화한 dist.tar.gz.gpg 만 repo에 둔다.
+# 이 워크플로가 복호화 → 압축해제 → Pages artifact 로 배포.
+# repo(raw / Contents API)에는 암호문만 노출되고, 평문 생성물은 브랜치에 없다.
+
+on:
+  push:
+    branches: [main]
+    paths: ['dist.tar.gz.gpg', '.github/workflows/deploy.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Decrypt & unpack site
+        env:
+          PASSPHRASE: ${{ secrets.SITE_GPG_PASSPHRASE }}
+        run: |
+          if [ -z "$PASSPHRASE" ]; then echo "::error::SITE_GPG_PASSPHRASE secret 이 비어 있습니다"; exit 1; fi
+          mkdir -p _site
+          gpg --quiet --batch --yes --decrypt --passphrase "$PASSPHRASE" -o dist.tar.gz dist.tar.gz.gpg
+          tar -xzf dist.tar.gz -C _site
+          rm -f dist.tar.gz
+          echo "복호화/해제 완료:"; ls -la _site
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

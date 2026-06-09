@@ -1,0 +1,10 @@
+# 평문 생성물은 repo에 두지 않는다.
+# Actions(deploy.yml)가 dist.tar.gz.gpg 를 복호화해 Pages artifact 로 배포한다.
+# 로컬에는 빌드 산출물이 그대로 있고(재암호화용), git 추적만 안 한다.
+arena/
+blog/
+community/
+wiki/
+/index.html
+/.nojekyll
+dist.tar.gz
